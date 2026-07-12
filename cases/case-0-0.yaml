@@ -1,0 +1,123 @@
+# =============================================================================
+#  CASE 0-0 — THE MISSING LUNCH
+#  The living example. This is the M0 micro-case, ported verbatim into the M1
+#  schema. It must play identically to the M0 prototype. See docs/CASE_FORMAT.md
+#  for the field-by-field guide (this file is its running example).
+# =============================================================================
+schema: 1
+
+case: "0-0"
+title: THE MISSING LUNCH
+defendant: SAL AMANDER
+
+# The judge's opening, played once before testimony begins.
+intro: intro
+
+# The Court Record. Present from the start of this case.
+evidence:
+  - id: fridge_log
+    name: FRIDGE ACCESS LOG
+    icon: log
+    desc: "GALLEY FRIDGE LOG. ONE ACCESS AT 0300 — BADGE 77. BADGE 77: PTERAX."
+
+# POWER economy. Wrong objections drain a pip; empty POWER restarts testimony.
+failure:
+  power: 5
+  on_empty:
+    - end_testimony: { result: restart }
+
+witnesses:
+  - id: pterax
+    name: PTERAX
+    portrait: pterax
+    testimony:
+      phase: THE ALIBI
+      statements:
+        # --- t1: the objectionable alibi -----------------------------------
+        - id: t1
+          text: "I WAS ASLEEP IN MY QUARTERS ALL NIGHT. NEVER LEFT. NOT ONCE."
+          press:
+            STATEMENT:
+              dialogue: t1_press
+              once: true
+              repeat_dialogue: t1_press_repeat
+          lie:
+            objection: CONTRADICTION
+            requires_evidence: fridge_log
+            breakdown: t1_breakdown
+            effects:
+              - reveal_statement: { statement: t1b, insert_after: t1 }
+          wrong_objection_dialogue: rebuke
+
+        # --- t1b: hidden until t1's lie is broken --------------------------
+        - id: t1b
+          hidden: true
+          text: "MY BUNKMATE TOLD ME THE GALLEY WAS LOCKED ALL NIGHT ANYWAY. SO IT COULDN'T HAVE BEEN ME."
+          press:
+            LOGIC:
+              dialogue: t1b_press
+              once: true
+              repeat_dialogue: t1b_press_repeat
+          lie:
+            objection: HEARSAY
+            breakdown: t1b_breakdown
+            effects:
+              - end_testimony: { result: win }
+          wrong_objection_dialogue: rebuke
+
+        # --- t2: filler, not objectionable ---------------------------------
+        - id: t2
+          text: "SAL ALWAYS EYES THE CAPTAIN'S LUNCH. EVERYONE KNOWS IT."
+          press:
+            MOTIVE:
+              dialogue: t2_press
+              once: true
+              repeat_dialogue: t2_press_repeat
+          wrong_objection_dialogue: t2_admissible
+
+# =============================================================================
+#  DIALOGUE — every line of speech, referenced by id above.
+# =============================================================================
+dialogue:
+  intro:
+    - speaker: JUDGE TRICERA
+      text: "COURT IS IN SESSION. SAL AMANDER STANDS ACCUSED OF EATING THE CAPTAIN'S LUNCH. COUNSELOR — YOUR WITNESS."
+
+  t1_press:
+    - speaker: PTERAX
+      text: "ASLEEP? I SLEEP STANDING UP. WITH ONE EYE OPEN. IT'S A PTERANODON THING."
+  t1_press_repeat:
+    - speaker: PTERAX
+      text: "I TOLD YOU. STANDING. ONE EYE."
+  t1_breakdown:
+    - speaker: PTERAX
+      expression: sweating
+      text: "THE LOG? BADGE 77?! FINE — I WENT TO THE GALLEY. BUT ONLY BECAUSE—"
+
+  t1b_press:
+    - speaker: PTERAX
+      text: "IF IT WAS LOCKED, HOW DID BADGE 77 GET IN? ...I WANT A LAWYER. WAIT. YOU'RE A LAWYER."
+  t1b_press_repeat:
+    - speaker: PTERAX
+      text: "NO FURTHER COMMENT."
+  t1b_breakdown:
+    - speaker: PTERAX
+      expression: sweating
+      text: "OBJECTION SUSTAINED?! BUT HE REALLY DID TELL ME— OH. OH NO. THAT'S THE PROBLEM, ISN'T IT."
+
+  t2_press:
+    - speaker: PTERAX
+      text: "LOOK, WE ALL EYE THE LUNCH. IT'S A GOOD LUNCH. THAT'S NOT A CRIME."
+  t2_press_repeat:
+    - speaker: PTERAX
+      text: "GOOD. LUNCH."
+
+  # Judge rebuke for a wrong objection on an objectionable statement.
+  rebuke:
+    - speaker: JUDGE TRICERA
+      text: "OVERRULED. WATCH YOURSELF, COUNSELOR."
+
+  # Judge line for objecting to the non-objectionable filler statement.
+  t2_admissible:
+    - speaker: JUDGE TRICERA
+      text: "OVERRULED. DISTASTEFUL, BUT ADMISSIBLE."

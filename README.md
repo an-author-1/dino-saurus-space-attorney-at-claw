@@ -7,9 +7,56 @@ prove your client innocent in a cosmic court system.
 
 ---
 
-## M0: the micro-prototype
+## M1: the case engine
 
-This repo currently contains **M0** — a five-minute, hardcoded courtroom scene
+The prototype is now a **data-driven case engine**. Cases are written as
+documents, never as code: author in YAML, compile to JSON, and the engine plays
+them. The micro-case (`cases/case-0-0.yaml`) runs from data and plays
+identically to the original M0 prototype.
+
+**If you want to write a case, read [`docs/CASE_FORMAT.md`](docs/CASE_FORMAT.md)
+and start from [`cases/case-1-1-skeleton.yaml`](cases/case-1-1-skeleton.yaml).**
+You never need to read engine source.
+
+### Commands
+
+```bash
+npm install
+npm run compile-cases   # cases/*.yaml  ->  dist-cases/*.json  (js-yaml, dev-only)
+npm run validate        # structural + text-budget + reachability checks on every case
+npm test                # engine regression harness + validator fixture tests
+npm run dev             # compile cases, then run the game (Vite)
+npm run build           # compile cases, typecheck, production build
+```
+
+### How it fits together
+
+| Path | Role |
+| --- | --- |
+| `cases/*.yaml` | authored cases (the source of truth) |
+| `src/engine/` | **pure** state machine — no DOM/canvas/audio; takes a compiled case + input events, returns state |
+| `src/render/` | canvas drawing (256×224, four-color post-pass), portraits |
+| `src/audio/` | Web Audio synthesis (turns engine cues into sound) |
+| `src/input/` | keyboard + tap mapping |
+| `scripts/` | `compile-cases`, `validate`, test runner |
+| `tests/` | headless engine regression + validator fixtures |
+| `docs/CASE_FORMAT.md` | the writer's guide |
+| `docs/M0_AUDIT.md` | how the schema was derived from M0 |
+
+The engine's purity is deliberate: it's why the whole game can be exercised
+headlessly in `npm test` with no browser.
+
+### Adding a case
+
+1. Copy `cases/case-1-1-skeleton.yaml` to `cases/case-1-1.yaml` and fill it in.
+2. `npm run validate` until it's clean.
+3. Point the runtime at it (currently `src/main.ts` imports `case-0-0`).
+
+---
+
+## M0: the original micro-prototype
+
+The five-minute, hardcoded courtroom scene the engine was generalized from —
 that exists to answer one question: *is diagnosing objection categories fun?*
 
 Read the witness's testimony, **press** statements for flavor (free), and

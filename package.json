@@ -1,15 +1,19 @@
 {
-  "name": "dino-saurus-space-attorney-m0",
+  "name": "dino-saurus-space-attorney",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
-  "description": "M0 micro-prototype: Dino Saurus, Space Attorney at Claw.",
+  "description": "Dino Saurus, Space Attorney at Claw — data-driven courtroom case engine (M1).",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
+    "compile-cases": "node scripts/compile-cases.mjs",
+    "validate": "node scripts/validate.mjs",
+    "test": "node scripts/compile-cases.mjs && node scripts/run-tests.mjs",
+    "dev": "npm run compile-cases && vite",
+    "build": "npm run compile-cases && tsc && vite build",
     "preview": "vite preview"
   },
   "devDependencies": {
+    "js-yaml": "^4.1.0",
     "typescript": "~5.6.3",
     "vite": "^5.4.10"
   }

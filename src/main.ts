@@ -1,20 +1,28 @@
 /*
- * Bootstrap: create the 256x224 framebuffer, integer-scale it to the largest
- * multiple that fits the window, wire up keyboard + pointer input, and run the
- * fixed logical-resolution render loop. The final frame is snapped to the four
- * palette colors before it hits the screen.
+ * Bootstrap. Loads the COMPILED case (JSON — never YAML at runtime), constructs
+ * the engine and the render/audio/input layers, and runs the fixed-resolution
+ * loop. The engine is pure; this file is the only place the four layers meet.
  */
 
-import { W, H, snapToPalette, paletteCensus } from "./gfx";
-import { Sfx } from "./audio";
-import { Portraits } from "./portraits";
-import { Game, type Action } from "./game";
+import { W, H, snapToPalette, paletteCensus } from "./render/gfx";
+import { View } from "./render/view";
+import { Portraits } from "./render/portraits";
+import { Sfx } from "./audio/audio";
+import { Engine } from "./engine/engine";
+import type { CompiledCase } from "./engine/types";
+import type { Cue, InputEvent } from "./engine/state";
+import { KEY_EVENTS, type Hotspot } from "./input/input";
+
+// Compiled by `npm run compile-cases`; Vite inlines the JSON into the bundle,
+// so the single-file build stays self-contained and dependency-free.
+import caseJson from "../dist-cases/case-0-0.json";
+
+const caseData = caseJson as unknown as CompiledCase;
 
 const screen = document.getElementById("screen") as HTMLCanvasElement;
 const ctx = screen.getContext("2d")!;
 ctx.imageSmoothingEnabled = false;
 
-// Offscreen framebuffer at logical resolution.
 const buffer = document.createElement("canvas");
 buffer.width = W;
 buffer.height = H;
@@ -23,22 +31,27 @@ bctx.imageSmoothingEnabled = false;
 
 const sfx = new Sfx();
 const portraits = new Portraits();
-const game = new Game(sfx, portraits);
+const engine = new Engine(caseData);
+const view = new View(portraits);
 
 // Expose for automated verification / debugging.
-(window as unknown as { __game: Game }).__game = game;
+(window as unknown as { __engine: Engine }).__engine = engine;
+
+let hotspots: Hotspot[] = [];
+
+function handleCues(cues: Cue[]): void {
+  for (const c of cues) {
+    sfx.play(c);
+    view.onCue(c);
+  }
+}
 
 /* ----------------------------------------------------------- scaling ---- */
 
 let scale = 1;
 function resize(): void {
-  // Integer-scale against DEVICE pixels so the framebuffer stays perfectly
-  // nearest-neighbor while still filling a high-DPI phone screen. The backing
-  // store is W*s x H*s device px; CSS presents it at the matching logical size.
   const dpr = window.devicePixelRatio || 1;
-  const availW = window.innerWidth * dpr;
-  const availH = window.innerHeight * dpr;
-  const s = Math.max(1, Math.floor(Math.min(availW / W, availH / H)));
+  const s = Math.max(1, Math.floor(Math.min((window.innerWidth * dpr) / W, (window.innerHeight * dpr) / H)));
   scale = s;
   screen.width = W * s;
   screen.height = H * s;
@@ -51,58 +64,49 @@ resize();
 
 /* ------------------------------------------------------------- input ---- */
 
-function unlockAudio(): void {
+function dispatch(event: InputEvent): void {
   sfx.resume();
+  handleCues(engine.input(event));
 }
-
-const KEY_ACTIONS: Record<string, Action> = {
-  ArrowUp: "up",
-  ArrowDown: "down",
-  ArrowLeft: "left",
-  ArrowRight: "right",
-  KeyZ: "confirm",
-  Enter: "confirm",
-  Space: "confirm",
-  KeyX: "back",
-  Escape: "back",
-  KeyC: "evidence",
-};
 
 window.addEventListener(
   "keydown",
   (e) => {
-    unlockAudio();
+    sfx.resume();
     if (e.code === "KeyP") {
       snapToPalette(bctx);
       paletteCensus(bctx);
       // eslint-disable-next-line no-console
-      console.log("state:", game.paletteCensusState());
+      console.log("state:", engine.state.phase);
       e.preventDefault();
       return;
     }
-    const a = KEY_ACTIONS[e.code];
+    const a = KEY_EVENTS[e.code];
     if (a) {
-      game.input(a);
+      dispatch(a);
       e.preventDefault();
     }
   },
   { passive: false },
 );
 
-function toLogical(clientX: number, clientY: number): { x: number; y: number } {
-  const rect = screen.getBoundingClientRect();
-  return {
-    x: ((clientX - rect.left) / rect.width) * W,
-    y: ((clientY - rect.top) / rect.height) * H,
-  };
-}
-
 screen.addEventListener(
   "pointerdown",
   (e) => {
-    unlockAudio();
-    const p = toLogical(e.clientX, e.clientY);
-    game.pointer(p.x, p.y);
+    sfx.resume();
+    const rect = screen.getBoundingClientRect();
+    const lx = ((e.clientX - rect.left) / rect.width) * W;
+    const ly = ((e.clientY - rect.top) / rect.height) * H;
+    for (const h of hotspots) {
+      if (lx >= h.x && lx < h.x + h.w && ly >= h.y && ly < h.y + h.h) {
+        if (typeof h.action === "string" && h.action.startsWith("menu:")) {
+          handleCues(engine.selectMenu(parseInt(h.action.slice(5), 10)));
+        } else {
+          dispatch(h.action as InputEvent);
+        }
+        break;
+      }
+    }
     e.preventDefault();
   },
   { passive: false },
@@ -114,11 +118,12 @@ let last = performance.now();
 function frame(now: number): void {
   let dt = (now - last) / 1000;
   last = now;
-  if (dt > 0.1) dt = 0.1; // clamp after tab-switch stalls
+  if (dt > 0.1) dt = 0.1;
 
-  game.update(dt);
-  game.render(bctx);
-  snapToPalette(bctx); // enforce the four-color rule on the finished frame
+  handleCues(engine.tick(dt));
+  view.update(dt, engine);
+  hotspots = view.render(bctx, engine);
+  snapToPalette(bctx);
 
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, screen.width, screen.height);

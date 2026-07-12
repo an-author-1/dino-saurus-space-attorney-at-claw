@@ -5,3 +5,7 @@ dist/
 
 # generated single-file build for artifact hosting
 dino-saurus-m0.html
+
+# generated
+dist-cases/
+tests/.build/

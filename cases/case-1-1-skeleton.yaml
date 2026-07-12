@@ -1,0 +1,278 @@
+# =============================================================================
+#  CASE 1-1 — THE STOLEN STAR MAP   (SKELETON / TEMPLATE)
+# -----------------------------------------------------------------------------
+#  Fill in every `# TODO:` below. This is a template, not a finished case — it
+#  is NOT meant to validate cleanly, and the compiler/validator SKIP any file
+#  whose name contains "skeleton", so it won't break the build while you work.
+#  When you're ready, copy it to cases/case-1-1.yaml and run `npm run validate`.
+#
+#  Full field-by-field guide: docs/CASE_FORMAT.md. Keep every `text` line
+#  within the 30-char x 4-line box budget (the stubs below already do).
+# =============================================================================
+
+# ----- BRIEFING SLOT ---------------------------------------------------------
+#  Author's notes. Not read by the engine — jot the design here before writing.
+#
+#  PREMISE:   # TODO: one line — what was stolen, from where, who's accused.
+#  WHODUNNIT: # TODO: who actually did it, and how you reveal it.
+#  THE LIES:  # TODO: the 2-3 objectionable statements and their categories:
+#             #   1) ...  (CONTRADICTION / HEARSAY / SPECULATION / RELEVANCE)
+#             #   2) ...
+#             #   3) ...
+# -----------------------------------------------------------------------------
+
+schema: 1
+
+case: "1-1"
+title: THE STOLEN STAR MAP
+defendant: # TODO: who is on trial
+
+# The judge's opening. Points at dialogue.intro (defined at the bottom).
+intro: intro
+
+# ----- THE COURT RECORD ------------------------------------------------------
+#  2-3 evidence items the player holds. `id` is referenced by a lie's
+#  `requires_evidence` and by any `add_evidence` effect. `icon` is optional.
+evidence:
+  - id: # TODO: evidence_1_id
+    name: # TODO: EXHIBIT NAME
+    desc: "# TODO: what it shows, <= box budget"
+  - id: # TODO: evidence_2_id
+    name: # TODO: EXHIBIT NAME
+    desc: "# TODO: what it shows"
+  # - id: evidence_3_id        # optional third exhibit
+  #   name: EXHIBIT NAME
+  #   desc: "..."
+
+# ----- POWER ECONOMY ---------------------------------------------------------
+failure:
+  power: 5
+  on_empty:
+    - end_testimony: { result: restart }
+
+# =============================================================================
+#  WITNESSES  (the brief calls for THREE). Cross-examined in list order;
+#  `advance_witness` moves from one to the next.
+# =============================================================================
+witnesses:
+
+  # ---- WITNESS 1 ------------------------------------------------------------
+  - id: witness_1
+    name: # TODO: WITNESS NAME
+    portrait: pterax          # one of: dino_saurus | pterax | judge
+    testimony:
+      phase: # TODO: PHASE LABEL, e.g. THE ALIBI
+      statements:
+
+        # s1 — a CONTRADICTION lie broken with evidence.
+        - id: s1
+          text: "# TODO: a claim your evidence disproves"
+          press:
+            STATEMENT:
+              dialogue: s1_press
+              once: true
+              repeat_dialogue: s1_press_repeat
+              # A press can also carry effects, e.g. hand over a clue:
+              # effects:
+              #   - set_flag: { flag: saw_the_gap }
+          lie:
+            objection: CONTRADICTION
+            requires_evidence: # TODO: evidence_1_id
+            breakdown: s1_breakdown
+            effects:
+              # Break s1 -> reveal the hidden follow-up s1b.
+              - reveal_statement: { statement: s1b, insert_after: s1 }
+          wrong_objection_dialogue: rebuke
+
+        # s1b — HIDDEN until s1's lie is broken (reveal_statement above).
+        #        A HEARSAY lie: TRUE but from someone not in court.
+        - id: s1b
+          hidden: true
+          text: "# TODO: 'X TOLD ME ...' — relayed, uncheckable"
+          press:
+            LOGIC:
+              dialogue: s1b_press
+              once: true
+              repeat_dialogue: s1b_press_repeat
+          lie:
+            objection: HEARSAY
+            breakdown: s1b_breakdown
+            effects:
+              # Mark this beat done, then hand off to witness 2.
+              - set_flag: { flag: witness_1_cracked }
+              - advance_witness: {}
+          wrong_objection_dialogue: rebuke
+
+        # s2 — FILLER: admissible, not objectionable (no `lie`).
+        #      wrong_objection_dialogue explains why it's admissible.
+        - id: s2
+          text: "# TODO: true but harmless flavor line"
+          press:
+            MOTIVE:
+              dialogue: s2_press
+              once: true
+              repeat_dialogue: s2_press_repeat
+          wrong_objection_dialogue: s2_admissible
+
+  # ---- WITNESS 2 ------------------------------------------------------------
+  #      This witness's lie is GATED: it can't be broken until witness 1 was
+  #      cracked (prerequisites requires the flag set above).
+  - id: witness_2
+    name: # TODO: WITNESS NAME
+    portrait: pterax          # one of: dino_saurus | pterax | judge
+    testimony:
+      phase: # TODO: PHASE LABEL
+      statements:
+
+        # s3 — a SPECULATION lie, gated behind witness_1_cracked.
+        - id: s3
+          text: "# TODO: a guess stated as fact"
+          press:
+            STATEMENT:
+              dialogue: s3_press
+              once: true
+              repeat_dialogue: s3_press_repeat
+          lie:
+            objection: SPECULATION
+            prerequisites:
+              - witness_1_cracked   # must hold before this can break
+            breakdown: s3_breakdown
+            effects:
+              - advance_witness: {}
+          wrong_objection_dialogue: rebuke
+
+        # s4 — FILLER for pacing.
+        - id: s4
+          text: "# TODO: harmless line"
+          press:
+            LOGIC:
+              dialogue: s4_press
+              once: true
+              repeat_dialogue: s4_press_repeat
+          wrong_objection_dialogue: s4_admissible
+
+  # ---- WITNESS 3 ------------------------------------------------------------
+  #      The closer. Breaking the final lie WINS the case.
+  - id: witness_3
+    name: # TODO: WITNESS NAME
+    portrait: pterax          # one of: dino_saurus | pterax | judge
+    testimony:
+      phase: # TODO: PHASE LABEL, e.g. THE CONFESSION
+      statements:
+
+        # s5 — the decisive CONTRADICTION. Break it to win.
+        - id: s5
+          text: "# TODO: the lie the final exhibit shatters"
+          press:
+            STATEMENT:
+              dialogue: s5_press
+              once: true
+              repeat_dialogue: s5_press_repeat
+          lie:
+            objection: CONTRADICTION
+            requires_evidence: # TODO: evidence_2_id
+            breakdown: s5_breakdown
+            effects:
+              - end_testimony: { result: win }
+          wrong_objection_dialogue: rebuke
+
+        # s6 — FILLER.
+        - id: s6
+          text: "# TODO: harmless line"
+          press:
+            MOTIVE:
+              dialogue: s6_press
+              once: true
+              repeat_dialogue: s6_press_repeat
+          wrong_objection_dialogue: s6_admissible
+
+# =============================================================================
+#  DIALOGUE — every line of speech, referenced by id above.
+#  Each entry is a LIST of boxes; add more `- speaker/text` lines for longer
+#  exchanges rather than overflowing one box. Keep each `text` within 30x4.
+# =============================================================================
+dialogue:
+
+  intro:
+    - speaker: # TODO: JUDGE TRICERA
+      text: "# TODO: court is in session ..."
+
+  # -- witness 1 --
+  s1_press:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: press response"
+  s1_press_repeat:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: shorter repeat line"
+  s1_breakdown:
+    - speaker: # TODO: WITNESS NAME
+      expression: sweating      # optional hint
+      text: "# TODO: the crack when caught"
+
+  s1b_press:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: press response"
+  s1b_press_repeat:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: repeat line"
+  s1b_breakdown:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: hearsay realization"
+
+  s2_press:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: press response"
+  s2_press_repeat:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: repeat line"
+
+  # -- witness 2 --
+  s3_press:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: press response"
+  s3_press_repeat:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: repeat line"
+  s3_breakdown:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: caught speculating"
+
+  s4_press:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: press response"
+  s4_press_repeat:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: repeat line"
+
+  # -- witness 3 --
+  s5_press:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: press response"
+  s5_press_repeat:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: repeat line"
+  s5_breakdown:
+    - speaker: # TODO: WITNESS NAME
+      expression: sweating
+      text: "# TODO: the confession"
+
+  s6_press:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: press response"
+  s6_press_repeat:
+    - speaker: # TODO: WITNESS NAME
+      text: "# TODO: repeat line"
+
+  # -- shared judge lines --
+  rebuke:
+    - speaker: JUDGE TRICERA
+      text: "OVERRULED. WATCH YOURSELF, COUNSELOR."
+  s2_admissible:
+    - speaker: JUDGE TRICERA
+      text: "OVERRULED. ADMISSIBLE."
+  s4_admissible:
+    - speaker: JUDGE TRICERA
+      text: "OVERRULED. IRRELEVANT, BUT ALLOWED."
+  s6_admissible:
+    - speaker: JUDGE TRICERA
+      text: "OVERRULED. LET IT STAND."

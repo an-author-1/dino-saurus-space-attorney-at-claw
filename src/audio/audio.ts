@@ -4,9 +4,38 @@
  * until then).
  */
 
+import type { Cue } from "../engine/state";
+
 export class Sfx {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+
+  /** Turn an engine Cue into sound. */
+  play(cue: Cue): void {
+    switch (cue.kind) {
+      case "blip":
+        this.blip(cue.seed ?? 0);
+        break;
+      case "move":
+        this.move();
+        break;
+      case "confirm":
+        this.thud();
+        break;
+      case "objection":
+        this.sting();
+        break;
+      case "wrong":
+        this.buzz();
+        break;
+      case "sustain":
+        this.sustainChime();
+        break;
+      case "fanfare":
+        this.fanfare();
+        break;
+    }
+  }
 
   /** Call from a user-gesture handler (keydown / pointerdown) to unlock audio. */
   resume(): void {

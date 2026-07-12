@@ -1,0 +1,32 @@
+# BROKEN FIXTURE: a hidden statement that no effect ever reveals.
+schema: 1
+case: "T"
+title: TEST
+defendant: X
+intro: intro
+evidence:
+  - { id: log, name: LOG, desc: "A LOG." }
+failure: { power: 5, on_empty: [{ end_testimony: { result: restart } }] }
+witnesses:
+  - id: w
+    name: WIT
+    portrait: pterax
+    testimony:
+      phase: P
+      statements:
+        - id: s1
+          text: "A LIE."
+          lie:
+            objection: CONTRADICTION
+            requires_evidence: log
+            breakdown: bd
+            effects: [{ end_testimony: { result: win } }]
+          wrong_objection_dialogue: rebuke
+        - id: s2                              # <-- hidden, never revealed
+          hidden: true
+          text: "AN ISLAND STATEMENT."
+          wrong_objection_dialogue: rebuke
+dialogue:
+  intro: [{ speaker: J, text: "HELLO." }]
+  bd: [{ speaker: WIT, text: "CAUGHT." }]
+  rebuke: [{ speaker: J, text: "NO." }]
