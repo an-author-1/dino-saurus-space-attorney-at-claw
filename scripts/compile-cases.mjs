@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /*
  * compile-cases — author format (YAML) -> runtime format (JSON).
  *
@@ -14,31 +13,39 @@
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { join, basename } from "node:path";
 import { fileURLToPath } from "node:url";
+import process from "node:process";
 import yaml from "js-yaml";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const srcDir = join(root, "cases");
 const outDir = join(root, "dist-cases");
 
-function compileAll() {
-  if (!existsSync(srcDir)) {
-    console.error(`No cases/ directory at ${srcDir}`);
-    process.exit(1);
-  }
+/**
+ * Compile all case YAML -> JSON. Pass { exitOnError:false } (used by the dev
+ * watch plugin) to throw instead of process.exit, so a bad save doesn't kill
+ * the dev server.
+ */
+export function compileAll({ exitOnError = true, quiet = false } = {}) {
+  const log = quiet ? () => {} : (m) => console.log(m);
+  const fail = (msg) => {
+    if (exitOnError) {
+      console.error(msg);
+      process.exit(1);
+    }
+    throw new Error(msg);
+  };
+
+  if (!existsSync(srcDir)) return fail(`No cases/ directory at ${srcDir}`);
   if (existsSync(outDir)) rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
 
   const files = readdirSync(srcDir).filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
-  if (files.length === 0) {
-    console.error("No .yaml case files found in cases/");
-    process.exit(1);
-  }
+  if (files.length === 0) return fail("No .yaml case files found in cases/");
 
   let count = 0;
   for (const file of files) {
-    // Skeletons are templates for authors, not compilable cases — skip them.
     if (file.includes("skeleton")) {
-      console.log(`skip  ${file} (skeleton template)`);
+      log(`skip  ${file} (skeleton template)`);
       continue;
     }
     const text = readFileSync(join(srcDir, file), "utf8");
@@ -46,15 +53,15 @@ function compileAll() {
     try {
       data = yaml.load(text);
     } catch (err) {
-      console.error(`YAML parse error in ${file}: ${err.message}`);
-      process.exit(1);
+      return fail(`YAML parse error in ${file}: ${err.message}`);
     }
     const outName = basename(file).replace(/\.ya?ml$/, ".json");
     writeFileSync(join(outDir, outName), JSON.stringify(data, null, 2) + "\n");
-    console.log(`ok    ${file} -> dist-cases/${outName}`);
+    log(`ok    ${file} -> dist-cases/${outName}`);
     count++;
   }
-  console.log(`\ncompiled ${count} case(s).`);
+  log(`\ncompiled ${count} case(s).`);
+  return count;
 }
 
-compileAll();
+if (fileURLToPath(import.meta.url) === process.argv[1]) compileAll();

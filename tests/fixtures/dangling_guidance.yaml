@@ -1,12 +1,14 @@
-# BROKEN FIXTURE: a lie requires evidence that does not exist.
+# BROKEN FIXTURE: a guidance category points at a dialogue that doesn't exist.
 schema: 2
 case: "T"
 title: TEST
 defendant: X
 intro: intro
 evidence:
-  - { id: log, name: LOG, desc: "A LOG." }
+  - { id: e, name: E, desc: "E." }
 failure: { power: 5, on_empty: [{ end_testimony: { result: restart } }] }
+guidance:
+  CONTRADICTION: missing_walkthrough    # <-- no such dialogue
 witnesses:
   - id: w
     name: WIT
@@ -15,14 +17,14 @@ witnesses:
       phase: P
       statements:
         - id: s1
-          text: "A LIE."
+          text: "LIE."
           lie:
             objection: CONTRADICTION
-            requires_evidence: missing_log   # <-- not defined in evidence[]
+            requires_evidence: e
             breakdown: bd
             effects: [{ end_testimony: { result: win } }]
-          wrong_objection_dialogue: rebuke
+          wrong_objection_dialogue: reb
 dialogue:
-  intro: [{ speaker: J, text: "HELLO." }]
-  bd: [{ speaker: WIT, text: "CAUGHT." }]
-  rebuke: [{ speaker: J, text: "NO." }]
+  intro: [{ speaker: J, text: "HI." }]
+  bd: [{ speaker: WIT, text: "OK." }]
+  reb: [{ speaker: J, text: "NO." }]

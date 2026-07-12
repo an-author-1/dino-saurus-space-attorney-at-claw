@@ -1,0 +1,87 @@
+# =============================================================================
+#  CASE 0-1 — THE INTERRUPTION DRILL
+#  A standalone ~90-second test scene for the Phase-B interruption mechanic:
+#  the prosecutor grills PTERAX, statements auto-advance, and you slam [Z] to
+#  cry LEADING QUESTION. Separate from any real case — a feel test.
+# =============================================================================
+schema: 2
+
+case: "0-1"
+title: THE INTERRUPTION DRILL
+defendant: SAL AMANDER
+
+intro: intro
+
+evidence:
+  - id: case_file
+    name: CASE FILE
+    icon: log
+    desc: "THE STAR COURT DOCKET. JUST PAPERWORK — NOTHING DAMNING IN HERE."
+
+failure:
+  power: 5
+  on_empty:
+    - end_testimony: { result: restart }
+
+witnesses:
+  - id: pterax
+    name: PTERAX
+    portrait: pterax
+    # phase: interruption switches this scene to the auto-advancing drill.
+    testimony:
+      phase: interruption
+      statements:
+        # A fair question — objecting here costs POWER.
+        - id: q1
+          text: "YOU WERE AWAKE AT 0300, WERE YOU NOT?"
+          duration_boxes: 2
+          wrong_objection_dialogue: fair
+
+        # A leading question — SLAM to catch it.
+        - id: q2
+          text: "AND YOU SAW THE DEFENDANT SNEAK OFF, DIDN'T YOU?"
+          duration_boxes: 3
+          lie:
+            objection: LEADING_QUESTION
+            breakdown: bd2
+            breakdown_sfx: breakdown_b
+            shake: light
+          wrong_objection_dialogue: rebuke
+
+        # Another fair question.
+        - id: q3
+          text: "REMIND THE COURT WHERE THE GALLEY IS."
+          duration_boxes: 2
+          wrong_objection_dialogue: fair
+
+        # The decisive leading question — catching it wins the drill.
+        - id: q4
+          text: "SO YOU'D AGREE THE DEFENDANT IS PLAINLY GUILTY, YES?"
+          duration_boxes: 3
+          lie:
+            objection: LEADING_QUESTION
+            breakdown: bd4
+            breakdown_sfx: breakdown_a
+            shake: heavy
+            effects:
+              - end_testimony: { result: win }
+          wrong_objection_dialogue: rebuke
+
+dialogue:
+  intro:
+    - speaker: JUDGE TRICERA
+      text: "A DRILL, COUNSELOR. THE PROSECUTOR WILL LEAD. SLAM [Z] AND CRY LEADING QUESTION."
+  bd2:
+    - speaker: PTERAX
+      expression: sweating
+      text: "I— HE'S PUTTING WORDS IN MY BEAK!"
+  bd4:
+    - speaker: PTERAX
+      expression: sweating
+      text: "SUSTAINED?! FINE. I DIDN'T SEE ANYTHING. THERE. HAPPY?"
+  fair:
+    - speaker: JUDGE TRICERA
+      text: "OVERRULED. THAT'S A FAIR QUESTION."
+  rebuke:
+    - speaker: JUDGE TRICERA
+      text: "OVERRULED. THAT'S NOT THE PROBLEM HERE."

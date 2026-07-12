@@ -4,7 +4,7 @@
 #  schema. It must play identically to the M0 prototype. See docs/CASE_FORMAT.md
 #  for the field-by-field guide (this file is its running example).
 # =============================================================================
-schema: 1
+schema: 2
 
 case: "0-0"
 title: THE MISSING LUNCH

@@ -7,6 +7,32 @@ prove your client innocent in a cosmic court system.
 
 ---
 
+## M2 (engine track): everything Case 1-1 needs
+
+The engine is now schema **v2** and carries the mechanics a full case needs —
+the script drops in without engine work:
+
+- **Briefing** prologue that hands over starting evidence; **multiple witnesses**
+  with a **RECESS** (+2 POWER) between them.
+- **Court Record browser** (grid of exhibits), reused as the evidence picker.
+- **Guidance** (co-counsel teaches each objection category the first time it's
+  solvable) and **hints** (cost one rank letter).
+- **Interruption phases** — the prosecutor leads the witness, statements
+  auto-advance, and you slam **Z** to cry **LEADING QUESTION**. Try the drill:
+  it ships as `cases/case-0-1.yaml`.
+- **Expressions + a talk cycle** on portraits (`assets/portraits/{char}/{expr}.png`,
+  placeholder dinosaurs if absent) and a named, synthesized **sound registry**.
+- **Writer mode** (`?dev=1`): instant text, a **J** jump-menu to any statement,
+  and in-page validator errors. `npm run dev` **hot-reloads cases on save**.
+- A **case picker** appears on the title screen when more than one case is
+  compiled.
+
+New author fields are all in [`docs/CASE_FORMAT.md`](docs/CASE_FORMAT.md); the
+[`cases/case-1-1-skeleton.yaml`](cases/case-1-1-skeleton.yaml) template is
+upgraded to v2 with every new field stubbed.
+
+---
+
 ## M1: the case engine
 
 The prototype is now a **data-driven case engine**. Cases are written as

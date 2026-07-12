@@ -1,6 +1,6 @@
 # BROKEN FIXTURE: the only lie is gated behind a flag that is never set,
 # so it can never be broken and the case is unwinnable.
-schema: 1
+schema: 2
 case: "T"
 title: TEST
 defendant: X

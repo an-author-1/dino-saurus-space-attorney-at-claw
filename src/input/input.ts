@@ -17,6 +17,7 @@ export const KEY_EVENTS: Record<string, InputEvent> = {
   KeyX: "back",
   Escape: "back",
   KeyC: "evidence",
+  KeyH: "hint",
 };
 
 /**
@@ -28,5 +29,6 @@ export interface Hotspot {
   y: number;
   w: number;
   h: number;
-  action: InputEvent | `menu:${number}`;
+  /** An engine event, a `menu:<i>` select-and-confirm, or a `sel:<i>` select. */
+  action: InputEvent | `menu:${number}` | `sel:${number}`;
 }

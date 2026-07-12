@@ -21,11 +21,18 @@
 #             #   3) ...
 # -----------------------------------------------------------------------------
 
-schema: 1
+schema: 2
 
 case: "1-1"
 title: THE STOLEN STAR MAP
 defendant: # TODO: who is on trial
+
+# ----- BRIEFING --------------------------------------------------------------
+#  Optional pre-testimony prologue (dialogue id). Plays before `intro`. Its
+#  lines may hand over STARTING evidence via an add_evidence effect. RULE: any
+#  exhibit named by an add_evidence starts ABSENT from the Court Record; grant
+#  it here so the player begins the case holding it. (See dialogue.briefing.)
+briefing: briefing
 
 # The judge's opening. Points at dialogue.intro (defined at the bottom).
 intro: intro
@@ -33,8 +40,9 @@ intro: intro
 # ----- THE COURT RECORD ------------------------------------------------------
 #  2-3 evidence items the player holds. `id` is referenced by a lie's
 #  `requires_evidence` and by any `add_evidence` effect. `icon` is optional.
+#  evidence_1_id is granted in the briefing, so it starts ABSENT until then.
 evidence:
-  - id: # TODO: evidence_1_id
+  - id: # TODO: evidence_1_id  (handed over in the briefing)
     name: # TODO: EXHIBIT NAME
     desc: "# TODO: what it shows, <= box budget"
   - id: # TODO: evidence_2_id
@@ -45,14 +53,23 @@ evidence:
   #   desc: "..."
 
 # ----- POWER ECONOMY ---------------------------------------------------------
+#  `power` is also the RECESS cap: each advance_witness restores +2 POWER,
+#  never above this starting max.
 failure:
   power: 5
   on_empty:
     - end_testimony: { result: restart }
 
+# ----- CO-COUNSEL GUIDANCE ---------------------------------------------------
+#  Optional map: objection category -> dialogue id. Auto-plays ONCE the first
+#  time that category becomes solvable. Keys must be real categories.
+guidance:
+  CONTRADICTION: guide_contradiction   # TODO: teach the contradiction beat
+
 # =============================================================================
-#  WITNESSES  (the brief calls for THREE). Cross-examined in list order;
-#  `advance_witness` moves from one to the next.
+#  WITNESSES  (the brief calls for THREE, plus a Phase-B interruption beat).
+#  Cross-examined in list order; `advance_witness` moves from one to the next
+#  and triggers the RECESS (+2 POWER).
 # =============================================================================
 witnesses:
 
@@ -65,8 +82,12 @@ witnesses:
       statements:
 
         # s1 — a CONTRADICTION lie broken with evidence.
+        #      Demonstrates hint + wrong_evidence_dialogue (right category,
+        #      wrong exhibit) + breakdown_sfx/shake.
         - id: s1
           text: "# TODO: a claim your evidence disproves"
+          # hint (dialogue id): shown on request, costs one rank letter.
+          hint: s1_hint             # TODO: point at the record
           press:
             STATEMENT:
               dialogue: s1_press
@@ -78,7 +99,11 @@ witnesses:
           lie:
             objection: CONTRADICTION
             requires_evidence: # TODO: evidence_1_id
+            # Right category, wrong exhibit -> this line (still costs 1 POWER).
+            wrong_evidence_dialogue: s1_wrong_evidence   # TODO
             breakdown: s1_breakdown
+            breakdown_sfx: breakdown_a   # registry sound on the crack
+            shake: heavy                 # light | heavy
             effects:
               # Break s1 -> reveal the hidden follow-up s1b.
               - reveal_statement: { statement: s1b, insert_after: s1 }
@@ -86,6 +111,7 @@ witnesses:
 
         # s1b — HIDDEN until s1's lie is broken (reveal_statement above).
         #        A HEARSAY lie: TRUE but from someone not in court.
+        #        Demonstrates a wrong_objection_dialogue LIST (round-robin).
         - id: s1b
           hidden: true
           text: "# TODO: 'X TOLD ME ...' — relayed, uncheckable"
@@ -98,10 +124,14 @@ witnesses:
             objection: HEARSAY
             breakdown: s1b_breakdown
             effects:
-              # Mark this beat done, then hand off to witness 2.
+              # Mark this beat done, then hand off to witness 2 (RECESS +2).
               - set_flag: { flag: witness_1_cracked }
               - advance_witness: {}
-          wrong_objection_dialogue: rebuke
+          # LIST form: the engine cycles these in deterministic round-robin.
+          wrong_objection_dialogue:
+            - rebuke        # TODO: vary these
+            - rebuke_b
+            - rebuke_c
 
         # s2 — FILLER: admissible, not objectionable (no `lie`).
         #      wrong_objection_dialogue explains why it's admissible.
@@ -127,6 +157,7 @@ witnesses:
         # s3 — a SPECULATION lie, gated behind witness_1_cracked.
         - id: s3
           text: "# TODO: a guess stated as fact"
+          hint: s3_hint            # TODO: nudge toward SPECULATION
           press:
             STATEMENT:
               dialogue: s3_press
@@ -138,7 +169,7 @@ witnesses:
               - witness_1_cracked   # must hold before this can break
             breakdown: s3_breakdown
             effects:
-              - advance_witness: {}
+              - advance_witness: {}   # RECESS +2 into witness 3
           wrong_objection_dialogue: rebuke
 
         # s4 — FILLER for pacing.
@@ -152,7 +183,7 @@ witnesses:
           wrong_objection_dialogue: s4_admissible
 
   # ---- WITNESS 3 ------------------------------------------------------------
-  #      The closer. Breaking the final lie WINS the case.
+  #      The closer. Breaking the final lie hands off to the Phase-B beat.
   - id: witness_3
     name: # TODO: WITNESS NAME
     portrait: pterax          # one of: dino_saurus | pterax | judge
@@ -160,7 +191,7 @@ witnesses:
       phase: # TODO: PHASE LABEL, e.g. THE CONFESSION
       statements:
 
-        # s5 — the decisive CONTRADICTION. Break it to win.
+        # s5 — the decisive CONTRADICTION. Break it to reach Phase B.
         - id: s5
           text: "# TODO: the lie the final exhibit shatters"
           press:
@@ -173,7 +204,7 @@ witnesses:
             requires_evidence: # TODO: evidence_2_id
             breakdown: s5_breakdown
             effects:
-              - end_testimony: { result: win }
+              - advance_witness: {}   # hand off to the interruption beat
           wrong_objection_dialogue: rebuke
 
         # s6 — FILLER.
@@ -186,6 +217,49 @@ witnesses:
               repeat_dialogue: s6_press_repeat
           wrong_objection_dialogue: s6_admissible
 
+  # ---- WITNESS 4 : PHASE B — THE INTERRUPTION -------------------------------
+  #      Not a normal cross. `phase: interruption` switches to the prosecutor-
+  #      driven drill: lines AUTO-ADVANCE after their duration_boxes; slam [Z]
+  #      to object. The ONLY valid category here is LEADING_QUESTION (and the
+  #      four standard categories are NOT valid in here). Every statement MUST
+  #      carry duration_boxes. Miss a lead = lost; all-missed = phase replays.
+  - id: prosecutor_cross
+    name: # TODO: PROSECUTOR NAME
+    portrait: pterax          # one of: dino_saurus | pterax | judge
+    testimony:
+      phase: interruption
+      statements:
+
+        # p1 — a FAIR question. Objecting here is the mistake (costs POWER).
+        - id: p1
+          text: "# TODO: a fair, answerable question"
+          duration_boxes: 2
+          wrong_objection_dialogue: fair
+
+        # p2 — a LEADING question. Slam [Z] to catch it.
+        - id: p2
+          text: "# TODO: puts words in the beak"
+          duration_boxes: 3
+          lie:
+            objection: LEADING_QUESTION
+            breakdown: p2_breakdown
+            breakdown_sfx: breakdown_b
+            shake: light
+          wrong_objection_dialogue: rebuke
+
+        # p3 — the decisive LEADING question. Catching it WINS the case.
+        - id: p3
+          text: "# TODO: 'SO HE'S GUILTY, YES?'"
+          duration_boxes: 3
+          lie:
+            objection: LEADING_QUESTION
+            breakdown: p3_breakdown
+            breakdown_sfx: breakdown_a
+            shake: heavy
+            effects:
+              - end_testimony: { result: win }
+          wrong_objection_dialogue: rebuke
+
 # =============================================================================
 #  DIALOGUE — every line of speech, referenced by id above.
 #  Each entry is a LIST of boxes; add more `- speaker/text` lines for longer
@@ -193,17 +267,37 @@ witnesses:
 # =============================================================================
 dialogue:
 
+  # -- briefing: hands over the starting exhibit via add_evidence --
+  briefing:
+    - speaker: # TODO: DINO SAURUS
+      text: "# TODO: they handed me the exhibit"
+      sfx: confirm
+      effects:
+        # TODO: grant the starting exhibit (must match evidence_1_id above).
+        - add_evidence: { evidence: evidence_1_id }
+
   intro:
     - speaker: # TODO: JUDGE TRICERA
       text: "# TODO: court is in session ..."
 
+  # -- co-counsel guidance (auto-plays when CONTRADICTION is first solvable) --
+  guide_contradiction:
+    - speaker: # TODO: DINO SAURUS
+      text: "# TODO: fights the record? show it"
+
   # -- witness 1 --
+  s1_hint:
+    - speaker: # TODO: DINO SAURUS
+      text: "# TODO: check the court record"
   s1_press:
     - speaker: # TODO: WITNESS NAME
       text: "# TODO: press response"
   s1_press_repeat:
     - speaker: # TODO: WITNESS NAME
       text: "# TODO: shorter repeat line"
+  s1_wrong_evidence:
+    - speaker: JUDGE TRICERA
+      text: "OVERRULED. RIGHT IDEA. WRONG EXHIBIT."
   s1_breakdown:
     - speaker: # TODO: WITNESS NAME
       expression: sweating      # optional hint
@@ -227,6 +321,9 @@ dialogue:
       text: "# TODO: repeat line"
 
   # -- witness 2 --
+  s3_hint:
+    - speaker: # TODO: DINO SAURUS
+      text: "# TODO: could she have seen it?"
   s3_press:
     - speaker: # TODO: WITNESS NAME
       text: "# TODO: press response"
@@ -263,10 +360,29 @@ dialogue:
     - speaker: # TODO: WITNESS NAME
       text: "# TODO: repeat line"
 
+  # -- Phase B: interruption breakdowns --
+  p2_breakdown:
+    - speaker: # TODO: WITNESS NAME
+      expression: sweating
+      text: "# TODO: he's leading me!"
+  p3_breakdown:
+    - speaker: # TODO: WITNESS NAME
+      expression: sweating
+      text: "# TODO: sustained?! fine."
+
   # -- shared judge lines --
   rebuke:
     - speaker: JUDGE TRICERA
       text: "OVERRULED. WATCH YOURSELF, COUNSELOR."
+  rebuke_b:
+    - speaker: JUDGE TRICERA
+      text: "OVERRULED. AGAIN? FOCUS."
+  rebuke_c:
+    - speaker: JUDGE TRICERA
+      text: "OVERRULED. ONE MORE AND I'LL WORRY."
+  fair:
+    - speaker: JUDGE TRICERA
+      text: "OVERRULED. THAT'S A FAIR QUESTION."
   s2_admissible:
     - speaker: JUDGE TRICERA
       text: "OVERRULED. ADMISSIBLE."

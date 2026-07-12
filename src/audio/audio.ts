@@ -1,49 +1,65 @@
 /*
- * All sound is synthesized in code — no audio files. A single AudioContext is
- * created lazily and resumed on the first user gesture (browsers block audio
- * until then).
+ * Synth registry. Every sound is generated in code — no audio files. Cues name
+ * a registry entry (see SFX_REGISTRY in engine/types); data (`sfx`,
+ * `breakdown_sfx`) references those names and the validator checks them.
  */
 
 import type { Cue } from "../engine/state";
+import type { SfxName } from "../engine/types";
 
 export class Sfx {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
 
-  /** Turn an engine Cue into sound. */
+  /** Play a cue by registry name. Unknown names are ignored. */
   play(cue: Cue): void {
-    switch (cue.kind) {
-      case "blip":
-        this.blip(cue.seed ?? 0);
-        break;
-      case "move":
-        this.move();
-        break;
-      case "confirm":
-        this.thud();
-        break;
-      case "objection":
-        this.sting();
-        break;
-      case "wrong":
-        this.buzz();
-        break;
-      case "sustain":
-        this.sustainChime();
-        break;
-      case "fanfare":
-        this.fanfare();
-        break;
-    }
+    const fn = this.registry[cue.name];
+    if (fn) fn(cue.seed ?? 0);
   }
 
-  /** Call from a user-gesture handler (keydown / pointerdown) to unlock audio. */
+  private registry: Record<SfxName, (seed: number) => void> = {
+    blip: (s) => this.tone("square", 700 + ((s * 53) % 260), 700 + ((s * 53) % 260), 0.02, 0.06),
+    confirm: () => this.tone("square", 150, 90, 0.12, 0.28),
+    move: () => this.tone("square", 480, 480, 0.02, 0.09),
+    objection_sting: () => {
+      this.tone("sawtooth", 900, 180, 0.28, 0.32);
+      this.tone("square", 300, 140, 0.32, 0.22);
+      this.noise(0.18, 0.3);
+    },
+    rebuke_buzz: () => {
+      this.tone("square", 320, 90, 0.3, 0.28);
+      this.tone("sawtooth", 240, 70, 0.3, 0.14);
+    },
+    breakdown_a: () => {
+      // Sharp descending stab.
+      this.tone("sawtooth", 660, 110, 0.35, 0.3);
+      this.noise(0.12, 0.22);
+    },
+    breakdown_b: () => {
+      // More chaotic double-hit.
+      this.tone("square", 520, 200, 0.14, 0.26);
+      this.tone("sawtooth", 300, 80, 0.4, 0.26, 0.1);
+      this.noise(0.2, 0.25, 0.05);
+    },
+    sustained: () => {
+      this.tone("square", 440, 660, 0.09, 0.24);
+      this.tone("square", 660, 880, 0.12, 0.24, 0.09);
+    },
+    recess: () => {
+      // Calm two-note recess bell.
+      this.tone("sine", 660, 660, 0.18, 0.22);
+      this.tone("sine", 880, 880, 0.28, 0.2, 0.16);
+    },
+    fanfare: () => {
+      [523, 659, 784, 1046].forEach((f, i) => this.tone("square", f, f, 0.14, 0.24, i * 0.11));
+    },
+  };
+
   resume(): void {
     if (!this.ctx) {
       const AC =
         window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext })
-          .webkitAudioContext;
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.ctx = new AC();
       this.master = this.ctx.createGain();
       this.master.gain.value = 0.5;
@@ -56,15 +72,7 @@ export class Sfx {
     return this.ctx ? this.ctx.currentTime : 0;
   }
 
-  /** A single oscillator with a linear-ramped pitch and a fast decay envelope. */
-  private tone(
-    type: OscillatorType,
-    f0: number,
-    f1: number,
-    dur: number,
-    vol: number,
-    delay = 0,
-  ): void {
+  private tone(type: OscillatorType, f0: number, f1: number, dur: number, vol: number, delay = 0): void {
     if (!this.ctx || !this.master) return;
     const t = this.now() + delay;
     const osc = this.ctx.createOscillator();
@@ -86,7 +94,6 @@ export class Sfx {
     const frames = Math.floor(this.ctx.sampleRate * dur);
     const buf = this.ctx.createBuffer(1, frames, this.ctx.sampleRate);
     const data = buf.getChannelData(0);
-    // Deterministic-ish LCG so we don't need Math.random; sound is the same shape each time.
     let s = 1234567;
     for (let i = 0; i < frames; i++) {
       s = (s * 1103515245 + 12345) & 0x7fffffff;
@@ -100,46 +107,5 @@ export class Sfx {
     src.connect(gain).connect(this.master);
     src.start(t);
     src.stop(t + dur);
-  }
-
-  /** Typewriter tick — one per revealed character, pitch jittered by index. */
-  blip(seed: number): void {
-    const f = 700 + ((seed * 53) % 260);
-    this.tone("square", f, f, 0.02, 0.06);
-  }
-
-  /** Low thud for menu confirm / selection. */
-  thud(): void {
-    this.tone("square", 150, 90, 0.12, 0.28);
-  }
-
-  /** Soft tick for menu cursor movement. */
-  move(): void {
-    this.tone("square", 480, 480, 0.02, 0.09);
-  }
-
-  /** Harsh sting for OBJECTION! — the slam. */
-  sting(): void {
-    this.tone("sawtooth", 900, 180, 0.28, 0.32);
-    this.tone("square", 300, 140, 0.32, 0.22);
-    this.noise(0.18, 0.3);
-  }
-
-  /** Descending buzz for a wrong objection. */
-  buzz(): void {
-    this.tone("square", 320, 90, 0.3, 0.28);
-    this.tone("sawtooth", 240, 70, 0.3, 0.14);
-  }
-
-  /** Bright rising flourish for a correct objection / breakdown. */
-  sustainChime(): void {
-    this.tone("square", 440, 660, 0.09, 0.24);
-    this.tone("square", 660, 880, 0.12, 0.24, 0.09);
-  }
-
-  /** Little victory arpeggio for the verdict. */
-  fanfare(): void {
-    const notes = [523, 659, 784, 1046];
-    notes.forEach((f, i) => this.tone("square", f, f, 0.14, 0.24, i * 0.11));
   }
 }

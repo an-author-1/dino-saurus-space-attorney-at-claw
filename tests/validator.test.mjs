@@ -29,6 +29,9 @@ const expectations = [
   ["unreachable_lie.yaml", /flag\(s\) \[never_set\] that are never set|never breakable/],
   ["orphan_statement.yaml", /hidden statement "s2" is never revealed/],
   ["over_budget.yaml", /over the 4-line budget/],
+  ["replaced_still_required.yaml", /replace_statement retires "s2" whose lie was never broken/],
+  ["dangling_guidance.yaml", /guidance\.CONTRADICTION: dangling dialogue id/],
+  ["interruption_no_duration.yaml", /interruption statement is missing "duration_boxes"/],
 ];
 
 for (const [file, pattern] of expectations) {

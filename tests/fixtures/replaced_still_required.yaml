@@ -1,0 +1,43 @@
+# BROKEN FIXTURE: replace_statement retires s2, whose lie was never broken.
+schema: 2
+case: "T"
+title: TEST
+defendant: X
+intro: intro
+evidence:
+  - { id: e, name: E, desc: "E." }
+failure: { power: 5, on_empty: [{ end_testimony: { result: restart } }] }
+witnesses:
+  - id: w
+    name: WIT
+    portrait: pterax
+    testimony:
+      phase: P
+      statements:
+        - id: s1
+          text: "FIRST."
+          lie:
+            objection: HEARSAY
+            breakdown: bd
+            effects:
+              - replace_statement: { statement: s2, with: s2b }   # <-- retires s2
+        - id: s2
+          text: "SECOND (STILL OBJECTIONABLE)."
+          lie:
+            objection: HEARSAY
+            prerequisites: [locked]     # never set -> s2's lie can never break
+            breakdown: bd
+          wrong_objection_dialogue: reb
+        - id: s2b
+          hidden: true
+          text: "REPLACEMENT."
+          lie:
+            objection: HEARSAY
+            breakdown: bd
+            effects:
+              - end_testimony: { result: win }
+          wrong_objection_dialogue: reb
+dialogue:
+  intro: [{ speaker: J, text: "HI." }]
+  bd: [{ speaker: WIT, text: "OK." }]
+  reb: [{ speaker: J, text: "NO." }]

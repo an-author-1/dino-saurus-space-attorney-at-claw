@@ -1,11 +1,10 @@
 /*
- * Engine state + I/O types. No DOM, no canvas, no audio here — the engine is a
- * pure state machine that the render / audio / input layers observe.
+ * Engine state + I/O types. No DOM, canvas, or audio here — the engine is a
+ * pure state machine the render / audio / input layers observe.
  */
 
-import type { DialogueLine, ObjectionCategory } from "./types";
+import type { DialogueLine, ObjectionCategory, SfxName, ShakeLevel } from "./types";
 
-/** Player inputs. The only way the outside world drives the machine. */
 export type InputEvent =
   | "up"
   | "down"
@@ -13,42 +12,41 @@ export type InputEvent =
   | "right"
   | "confirm"
   | "back"
-  | "evidence";
+  | "evidence"
+  | "hint"
+  | "slam";
 
-/** The finite states. Same shape as the M0 machine. */
 export type Phase =
   | "TITLE"
+  | "CASE_PICK"
+  | "BRIEFING"
   | "INTRO"
   | "TESTIMONY"
+  | "INTERRUPTION"
   | "PRESS_MENU"
   | "PRESS_RESPONSE"
   | "OBJECTION_ANIM"
   | "OBJECTION_MENU"
   | "EVIDENCE_PICK"
   | "EVIDENCE_OVERLAY"
+  | "GUIDANCE"
+  | "HINT_CONFIRM"
+  | "HINT"
   | "JUDGE_LINE"
   | "BREAKDOWN"
+  | "RECESS"
   | "VERDICT"
-  | "POWER_EMPTY";
+  | "POWER_EMPTY"
+  | "DEV_JUMP";
 
 /**
- * Semantic output cues. The engine emits these; the audio layer turns them into
- * sound and the render layer turns some of them (objection/wrong) into shake.
- * Keeping them semantic is what keeps the engine free of audio/canvas.
+ * A cue names a synthesized sound (SFX_REGISTRY) and may carry a shake level;
+ * the audio layer plays the sound, the render layer applies the shake.
  */
-export type CueKind =
-  | "blip"
-  | "move"
-  | "confirm"
-  | "objection"
-  | "wrong"
-  | "sustain"
-  | "fanfare";
-
 export interface Cue {
-  kind: CueKind;
-  /** For "blip": jitters the pitch per character. */
+  name: SfxName;
   seed?: number;
+  shake?: ShakeLevel;
 }
 
 export interface MenuItem {
@@ -56,44 +54,52 @@ export interface MenuItem {
   value: string;
 }
 
-/** The currently-running exchange (statement box, press response, judge line…). */
 export interface RunningDialogue {
   lines: DialogueLine[];
   lineIdx: number;
-  /** Revealed characters of the current line (typewriter). */
   shown: number;
   cps: number;
+  /** Whether the current line's effects have already fired. */
+  firedLine: number;
 }
 
-/**
- * The full observable state. The render layer reads this; nothing outside the
- * engine writes it.
- */
 export interface EngineState {
   phase: Phase;
   power: number;
 
   witnessIdx: number;
-  /** Visible statement ids for the current witness, in running order. */
   order: string[];
   idx: number;
 
   flags: Set<string>;
   pressed: Set<string>;
   broken: Set<string>;
-  /** Evidence ids currently in the Court Record. */
   evidence: string[];
 
   dialogue: RunningDialogue | null;
   menu: MenuItem[];
   sel: number;
 
-  /** OBJECTION! interrupt progress, seconds. */
   objTimer: number;
 
-  /** Category chosen at the objection menu, awaiting an evidence pick. */
   pendingCategory: ObjectionCategory | null;
-
-  /** Result recorded at end of testimony (drives the verdict card). */
   endResult: "win" | "lose" | null;
+
+  /** Objection categories whose co-counsel guidance has already played. */
+  guidanceShown: Set<string>;
+  /** Hint requests made this testimony (each drops the rank one letter). */
+  hintsUsed: number;
+
+  /** Interruption: statements whose window closed unchallenged. */
+  missed: Set<string>;
+  /** Interruption: seconds the current auto-advancing line has been on screen. */
+  autoTimer: number;
+
+  /** Dev mode: instant text, jump menu, on-screen validator errors. */
+  dev: boolean;
+
+  /** The current dialogue line's expression (for the render layer). */
+  expression: string;
+  /** Header/label for the current scene, when data-driven (e.g. RECESS to phase). */
+  banner: string;
 }

@@ -1,0 +1,27 @@
+# BROKEN FIXTURE: an interruption statement with no duration_boxes.
+schema: 2
+case: "T"
+title: TEST
+defendant: X
+intro: intro
+evidence: []
+failure: { power: 5, on_empty: [{ end_testimony: { result: restart } }] }
+witnesses:
+  - id: w
+    name: WIT
+    portrait: pterax
+    testimony:
+      phase: interruption
+      statements:
+        - id: q1
+          text: "YOU DID IT, DIDN'T YOU?"
+          # duration_boxes missing   <-- target
+          lie:
+            objection: LEADING_QUESTION
+            breakdown: bd
+            effects: [{ end_testimony: { result: win } }]
+          wrong_objection_dialogue: reb
+dialogue:
+  intro: [{ speaker: J, text: "HI." }]
+  bd: [{ speaker: WIT, text: "OK." }]
+  reb: [{ speaker: J, text: "NO." }]
