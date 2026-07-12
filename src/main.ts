@@ -32,12 +32,18 @@ const game = new Game(sfx, portraits);
 
 let scale = 1;
 function resize(): void {
-  const s = Math.max(1, Math.floor(Math.min(window.innerWidth / W, window.innerHeight / H)));
+  // Integer-scale against DEVICE pixels so the framebuffer stays perfectly
+  // nearest-neighbor while still filling a high-DPI phone screen. The backing
+  // store is W*s x H*s device px; CSS presents it at the matching logical size.
+  const dpr = window.devicePixelRatio || 1;
+  const availW = window.innerWidth * dpr;
+  const availH = window.innerHeight * dpr;
+  const s = Math.max(1, Math.floor(Math.min(availW / W, availH / H)));
   scale = s;
   screen.width = W * s;
   screen.height = H * s;
-  screen.style.width = `${W * s}px`;
-  screen.style.height = `${H * s}px`;
+  screen.style.width = `${(W * s) / dpr}px`;
+  screen.style.height = `${(H * s) / dpr}px`;
   ctx.imageSmoothingEnabled = false;
 }
 window.addEventListener("resize", resize);
