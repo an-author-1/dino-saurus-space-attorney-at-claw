@@ -232,19 +232,19 @@ console.log("\n[interruption] hit / miss / false-slam");
 
   // miss q2: let its window elapse
   const ms = toDrill();
-  ms.tick(4); // q1 (dur 2) window closes
+  ms.tick(20); // q1 (dur 2) window closes
   assert(ms.id === "q2", "auto-advanced to q2");
-  ms.tick(7); // q2 (dur 3 = 5.4s) window closes unobjected
+  ms.tick(20); // q2 (dur 3 = 5.4s) window closes unobjected
   assert(ms.s.missed.has("q2"), "unchallenged leading question is marked missed");
 
   // hit q2 then q4 -> win
   const hs = toDrill();
-  hs.tick(4); // -> q2
+  hs.tick(20); // -> q2
   hs.slamMenu(); hs.key("confirm"); // LEADING_QUESTION on q2 -> SUSTAINED
   hs.adv(); // -> BREAKDOWN
   hs.adv(); // breakdown -> resume interruption on q3
   assert(hs.s.broken.has("q2"), "caught leading question q2");
-  hs.tick(4); // q3 window closes -> q4
+  hs.tick(20); // q3 window closes -> q4
   assert(hs.id === "q4", "advanced to decisive q4");
   hs.slamMenu(); hs.key("confirm"); // LEADING_QUESTION -> SUSTAINED
   hs.adv(); // -> BREAKDOWN

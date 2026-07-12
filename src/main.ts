@@ -162,6 +162,7 @@ function frame(now: number): void {
   handleCues(engine.tick(dt));
   view.update(dt, engine);
   hotspots = view.render(bctx, engine);
+  (window as unknown as { __hotspots: Hotspot[] }).__hotspots = hotspots;
   drawErrorOverlay();
   snapToPalette(bctx);
 

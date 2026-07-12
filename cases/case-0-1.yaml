@@ -70,7 +70,7 @@ witnesses:
 dialogue:
   intro:
     - speaker: JUDGE TRICERA
-      text: "A DRILL, COUNSELOR. THE PROSECUTOR WILL LEAD. SLAM [Z] AND CRY LEADING QUESTION."
+      text: "A DRILL, COUNSELOR. THE PROSECUTOR WILL LEAD. TAP OBJECT! TO CRY LEADING QUESTION."
   bd2:
     - speaker: PTERAX
       expression: sweating

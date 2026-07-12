@@ -159,16 +159,30 @@ export class View {
 
     if (phase === "EVIDENCE_PICK") this.renderRecord(ctx, eng, true);
 
-    ctx.restore();
-
-    if (
+    // Tap-anywhere-to-advance for reading / title / cutscene states. NOT
+    // interruption (that has its own OBJECT! button so stray taps don't object).
+    const tapAnywhere =
       phase === "TITLE" || phase === "BRIEFING" || phase === "INTRO" || phase === "GUIDANCE" ||
       phase === "HINT" || phase === "PRESS_RESPONSE" || phase === "JUDGE_LINE" || phase === "BREAKDOWN" ||
-      phase === "VERDICT" || phase === "OBJECTION_ANIM" || phase === "RECESS" || phase === "INTERRUPTION"
-    ) {
-      this.hotspots.push({ x: 0, y: 0, w: W, h: H, action: "confirm" });
+      phase === "VERDICT" || phase === "OBJECTION_ANIM" || phase === "RECESS";
+
+    // A visible "TAP TO CONTINUE" cue on the reading states.
+    if (phase === "BRIEFING" || phase === "INTRO" || phase === "GUIDANCE" || phase === "HINT" ||
+        phase === "PRESS_RESPONSE" || phase === "JUDGE_LINE" || phase === "BREAKDOWN") {
+      if (Math.floor(this.t * 2) % 2 === 0) drawTextCentered(ctx, "TAP TO CONTINUE", 0, W, H - 12, GRAY, 6);
     }
+
+    ctx.restore();
+
+    if (tapAnywhere) this.hotspots.push({ x: 0, y: 0, w: W, h: H, action: "confirm" });
     return this.hotspots;
+  }
+
+  /** A labeled, tappable button. Returns nothing; pushes a hotspot. */
+  private button(ctx: CanvasRenderingContext2D, label: string, x: number, y: number, w: number, h: number, action: Hotspot["action"]): void {
+    panel(ctx, x, y, w, h);
+    drawTextCentered(ctx, label, x, w, y + Math.floor((h - 8) / 2), WHITE, 6);
+    this.hotspots.push({ x, y, w, h, action });
   }
 
   /* --------- portraits ------------------------------------------------ */
@@ -235,8 +249,8 @@ export class View {
     ctx.fillRect(x + 6, y + 36, w - 12, 1);
     drawText(ctx, "POWER", x + 8, y + 44, SILVER);
     this.drawPips(ctx, x + 8, y + 56, eng.state.power);
-    drawText(ctx, `< ${eng.state.idx + 1}/${eng.state.order.length} >`, x + 8, y + 72, WHITE);
-    drawText(ctx, "[C] REC  [H] HINT", x + 8, y + 84, GRAY, 6);
+    drawText(ctx, `STATEMENT ${eng.state.idx + 1} OF ${eng.state.order.length}`, x + 8, y + 72, WHITE, 6);
+    drawText(ctx, "TAP A BUTTON BELOW", x + 8, y + 84, GRAY, 6);
   }
 
   private drawDialogueBox(ctx: CanvasRenderingContext2D, eng: Engine, nameOverride?: string): void {
@@ -288,7 +302,7 @@ export class View {
       drawTextCentered(ctx, `MICRO-CASE ${eng.case.case}`, bx, bw, by + 8, WHITE, 6);
       drawTextCentered(ctx, eng.case.title, bx, bw, by + 20, SILVER, 6);
     }
-    if (Math.floor(this.t * 2) % 2 === 0) drawTextCentered(ctx, "PRESS Z", bx, bw, by + 34, WHITE);
+    if (Math.floor(this.t * 2) % 2 === 0) drawTextCentered(ctx, "TAP TO START", bx, bw, by + 34, WHITE, 6);
     drawTextCentered(ctx, "(C) 3087 CLAW ENTERPRISES", 0, W, H - 14, GRAY);
   }
 
@@ -359,28 +373,20 @@ export class View {
   }
 
   private drawTestimonyFooter(ctx: CanvasRenderingContext2D): void {
-    const ay = DBOX.y + Math.floor(DBOX.h / 2) - 8;
-    panel(ctx, DBOX.x - 2, ay, 12, 16);
-    drawText(ctx, "◀", DBOX.x, ay + 4, WHITE, 6);
-    this.hotspots.push({ x: DBOX.x - 6, y: ay - 4, w: 22, h: 24, action: "left" });
-    panel(ctx, DBOX.x + DBOX.w - 10, ay, 12, 16);
-    drawText(ctx, "▶", DBOX.x + DBOX.w - 8, ay + 4, WHITE, 6);
-    this.hotspots.push({ x: DBOX.x + DBOX.w - 14, y: ay - 4, w: 22, h: 24, action: "right" });
+    // Big prev/next arrow buttons on the dialogue box edges.
+    const ay = DBOX.y + Math.floor(DBOX.h / 2) - 12;
+    this.button(ctx, "◀", DBOX.x - 2, ay, 16, 24, "left");
+    this.button(ctx, "▶", DBOX.x + DBOX.w - 14, ay, 16, 24, "right");
 
     const btns: { label: string; action: Hotspot["action"] }[] = [
-      { label: "[Z]PRESS", action: "confirm" },
-      { label: "[X]OBJ", action: "back" },
-      { label: "[C]REC", action: "evidence" },
-      { label: "[H]HINT", action: "hint" },
+      { label: "PRESS", action: "confirm" },
+      { label: "OBJECT", action: "back" },
+      { label: "RECORD", action: "evidence" },
+      { label: "HINT", action: "hint" },
     ];
     const bw = Math.floor((W - 12 - 3 * 3) / 4);
-    const by = 194;
-    btns.forEach((b, i) => {
-      const bx = 6 + i * (bw + 3);
-      panel(ctx, bx, by, bw, 24);
-      drawTextCentered(ctx, b.label, bx, bw, by + 8, WHITE, 6);
-      this.hotspots.push({ x: bx, y: by, w: bw, h: 24, action: b.action });
-    });
+    const by = 192;
+    btns.forEach((b, i) => this.button(ctx, b.label, 6 + i * (bw + 3), by, bw, 26, b.action));
   }
 
   /* --------- INTERRUPTION --------------------------------------------- */
@@ -402,9 +408,25 @@ export class View {
     outline(ctx, STATUS.x + 8, STATUS.y + 58, barW, 8, GRAY);
     ctx.fillStyle = WHITE;
     ctx.fillRect(STATUS.x + 9, STATUS.y + 59, Math.round((barW - 2) * p), 6);
-    if (Math.floor(this.t * 3) % 2 === 0) drawText(ctx, "SLAM [Z] TO OBJECT", STATUS.x + 8, STATUS.y + 76, WHITE, 6);
+    drawText(ctx, "LEADING? TAP OBJECT!", STATUS.x + 8, STATUS.y + 76, SILVER, 6);
 
-    this.drawDialogueBox(ctx, eng, "PROSECUTOR");
+    // Dialogue box, shortened to leave room for the big OBJECT! button.
+    panel(ctx, DBOX.x, DBOX.y, DBOX.w, 40);
+    const box = eng.currentBox();
+    if (box) {
+      const tagW = "PROSECUTOR".length * CELL + 8;
+      panel(ctx, DBOX.x + 6, DBOX.y - 7, tagW, 12);
+      drawText(ctx, "PROSECUTOR", DBOX.x + 10, DBOX.y - 4, SILVER);
+      this.drawRevealed(ctx, wrap(box.line.text, DCOLS), box.shown, DBOX_TX, DBOX_TY);
+    }
+
+    // The big OBJECT! button — the whole point on a phone. Flashes for urgency.
+    const by = 172;
+    const flash = eng.interruptionProgress() > 0.6 && Math.floor(this.t * 6) % 2 === 0;
+    panel(ctx, 6, by, W - 12, 44);
+    if (flash) { ctx.fillStyle = WHITE; ctx.fillRect(9, by + 3, W - 18, 38); }
+    drawTextCentered(ctx, "OBJECT!", 6, W - 12, by + 14, flash ? BLACK : WHITE, 12, 16);
+    this.hotspots.push({ x: 6, y: by, w: W - 12, h: 44, action: "confirm" });
   }
 
   /* --------- OBJECTION! ----------------------------------------------- */
@@ -488,7 +510,13 @@ export class View {
     } else {
       drawTextCentered(ctx, "COURT RECORD EMPTY", bx, bw, by + 40, GRAY);
     }
-    drawTextCentered(ctx, picking ? "[Z] PRESENT   [X] BACK" : "[X] CLOSE", bx, bw, by + bh - 14, WHITE, 6);
+    const fy = 194;
+    if (picking) {
+      this.button(ctx, "PRESENT", 14, fy, 110, 24, `menu:${sel}`);
+      this.button(ctx, "BACK", 132, fy, W - 146, 24, "back");
+    } else {
+      this.button(ctx, "CLOSE", 40, fy, W - 80, 24, "back");
+    }
   }
 
   private drawEvidenceIcon(ctx: CanvasRenderingContext2D, icon: string, name: string, x: number, y: number, selected: boolean): void {
@@ -523,7 +551,7 @@ export class View {
     drawTextCentered(ctx, "RECESS", bx, bw, by + 14, WHITE, 11, 14);
     drawTextCentered(ctx, "THE COURT TAKES A BREAK.", bx, bw, by + 40, SILVER, 6);
     drawTextCentered(ctx, `POWER RESTORED  (${eng.state.power}/${eng.case.failure.power})`, bx, bw, by + 54, WHITE, 6);
-    if (Math.floor(this.t * 2) % 2 === 0) drawTextCentered(ctx, "[Z] RESUME", bx, bw, by + bh - 16, WHITE);
+    this.button(ctx, "RESUME", bx + 40, by + bh - 24, bw - 80, 22, "confirm");
   }
 
   /* --------- VERDICT / POWER EMPTY ------------------------------------ */
@@ -541,7 +569,7 @@ export class View {
     drawTextCentered(ctx, `CASE RANK: ${eng.rank()}`, bx, bw, by + 58, WHITE);
     const lost = eng.case.failure.power - eng.state.power;
     drawTextCentered(ctx, `POWER LOST ${lost}   HINTS ${eng.state.hintsUsed}`, bx, bw, by + 74, GRAY, 6);
-    if (Math.floor(this.t * 2) % 2 === 0) drawTextCentered(ctx, "[Z] PLAY AGAIN", bx, bw, by + bh - 16, WHITE);
+    this.button(ctx, "PLAY AGAIN", bx + 34, by + bh - 24, bw - 68, 22, "confirm");
   }
 
   private renderPowerEmpty(ctx: CanvasRenderingContext2D, eng: Engine): void {

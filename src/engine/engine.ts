@@ -27,7 +27,9 @@ import type { ShakeLevel } from "./types";
 const OBJ_ANIM_DUR = 0.75;
 const CPS_NORMAL = 30;
 const CPS_BREAKDOWN = 55;
-const BASE_BOX_TIME = 1.8; // seconds per `duration_boxes` unit in interruptions
+// Seconds per `duration_boxes` unit an interruption line holds before it scrolls
+// away. Kept generous so the "tap OBJECT!" window is comfortable on a phone.
+const BASE_BOX_TIME = 4.5;
 
 export interface EngineOpts {
   dev?: boolean;
